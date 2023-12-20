@@ -62,9 +62,22 @@ export default class AmazingMarvinPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new AmazingMarvinSettingsTab(this.app, this));
+
+		this.addCommand({
+			id: 'ca-am-sync',
+			name: 'Sync Amazing Marvin categories and projects',
+			callback: () => {
+				this.sync().then(() => {
+					new Notice('Amazing Marvin data synced successfully.');
+				}).catch((error) => {
+					console.error('Sync error:', error);
+					new Notice('Error syncing with Amazing Marvin.');
+				});
+			}
+		});
 	}
 
-	onunload() {}
+	onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -76,4 +89,36 @@ export default class AmazingMarvinPlugin extends Plugin {
 	saveSettings() {
 		this.saveData(this.settings);
 	}
+
+	async fetchMarvinData(url: string) {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				['X-API-Token']: this.settings.apiKey,
+				'Content-Type': 'application/json'
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`API request failed: ${response.status}`);
+		}
+
+		return response.json();
+	}
+
+
+	async sync() {
+		const baseUrl = 'https://serv.amazingmarvin.com/api'; // Replace with actual base URL
+
+		try {
+			// Fetch Categories and Projects
+			const categories = await this.fetchMarvinData(`${baseUrl}/categories`);
+
+			console.log(categories);
+		} catch (error) {
+			console.error('Error syncing Amazing Marvin data:', error);
+		}
+	}
+
 }
+

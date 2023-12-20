@@ -13,17 +13,29 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	private getAPILink(): HTMLAnchorElement {
+		const a = document.createElement('a');
+		a.href = 'https://app.amazingmarvin.com/pre?api';
+		a.text = 'API page';
+		a.target = '_blank';
+		return a;
+	}
+
 	display(): void {
 		const { containerEl } = this;
 
 		containerEl.empty();
 
+		const descEl = document.createDocumentFragment();
+		descEl.appendText('Get your Token at the ');
+		descEl.appendChild(this.getAPILink());
+
 		new Setting(containerEl)
-			.setName("API Key")
-			.setDesc("Amazing Marvin API key.")
+			.setName("API Token")
+			.setDesc(descEl)
 			.addText((text) =>
 				text
-					.setPlaceholder("Get your key at https://app.amazingmarvin.com/pre?api")
+					.setPlaceholder("API token")
 					.setValue(this.plugin.settings.apiKey)
 					.onChange(async (value) => {
 						this.plugin.settings.apiKey = value;
