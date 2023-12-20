@@ -69,10 +69,10 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'ca-am-sync',
-			name: 'Sync Amazing Marvin categories and projects',
+			name: 'Import Amazing Marvin',
 			callback: () => {
 				this.sync().then(() => {
-					new Notice('Amazing Marvin data synced successfully.');
+					new Notice('Amazing Marvin data imported successfully.');
 				}).catch((error) => {
 					console.error('Sync error:', error);
 					new Notice('Error syncing with Amazing Marvin.');
@@ -115,7 +115,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		const baseUrl = 'https://serv.amazingmarvin.com/api';
 
 		try {
-			this.app.vault.adapter.remove(CONSTANTS.baseDir);
+			this.app.vault.adapter.rmdir(CONSTANTS.baseDir, true);
 			// Fetch Categories and Projects
 			this.categories = await this.fetchMarvinData(`${baseUrl}/categories`);
 
@@ -224,13 +224,20 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 	formatTasks(tasks: any[], level = 0) {
+
 		let content = '';
+
+		// Add a section for tasks (if you plan to include tasks within the same note)
+		content += `\n## Tasks\n`;
+
 		for (const task of tasks) {
 			// Indentation for nested tasks
 			const indentation = ' '.repeat(level * 2);
 
 			// Checkbox for task completion
 			content += `${indentation}- [${task.done ? 'x' : ' '}] `;
+
+			content += ` [⚓](https://app.amazingmarvin.com/#t=${task._id}) `;
 
 			// task details
 			content += this.formatTaskDetails(task, indentation);
@@ -270,7 +277,20 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 	async createContentForCategory(category: Category): Promise<string> {
-		let content = `# ${category.title}\n\n`;
+		let yamlFrontmatter = "---\n";
+
+		// Iterate over category properties and add non-null values to YAML frontmatter
+		for (const [key, value] of Object.entries(category)) {
+				if (value !== null && value !== undefined) {
+						const safeValue = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
+						yamlFrontmatter += `${key}: ${safeValue}\n`;
+				}
+		}
+
+		// Close YAML frontmatter block
+		yamlFrontmatter += "---\n";
+
+		let content = `# [⚓](https://app.amazingmarvin.com/#p=${category._id}) ${category.title}\n\n`;
 
 		// Link to parent category, if it exists
 		if (category.parentId && category.parentId !== "root") {
@@ -301,14 +321,11 @@ export default class AmazingMarvinPlugin extends Plugin {
 			content += `**Priority::** ${category.priority}\n`;
 		}
 
-		// Add a section for tasks (if you plan to include tasks within the same note)
-		content += `\n## Tasks\n`;
-
 		// Fetch and format tasks
 		const tasks = await this.fetchTasks(category._id);
 		content += this.formatTasks(tasks);
 
-		return content;
+		return yamlFrontmatter + content;
 	}
 
 }
