@@ -112,7 +112,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 
 	async sync() {
-		const baseUrl = 'https://serv.amazingmarvin.com/api'; // Replace with actual base URL
+		const baseUrl = 'https://serv.amazingmarvin.com/api';
 
 		try {
 			this.app.vault.adapter.remove(CONSTANTS.baseDir);
@@ -183,13 +183,17 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		buildPathSegments(category);
 
-		// Determine the filename based on whether the category has children
-		const hasChildren = this.categories.some(cat => cat.parentId === category._id);
-		const fileName = hasChildren ? `${category.title}.md` : `index.md`; // Or `_CategoryName.md`
+		// Determine the filename and if the category should be a folder based on its children
+		const hasChildCategoriesOrProjects = this.categories.some(cat =>
+			cat.parentId === category._id && (cat.type === 'project' || cat.type === 'category')
+		);
+
+		// If the category has children that are categories or projects, make it a folder
+		const isFolder = hasChildCategoriesOrProjects;
 
 		// Construct the path
-		let path = `${CONSTANTS.baseDir}/${pathSegments.join('/')}/`;
-		path += hasChildren ? fileName : `${pathSegments[pathSegments.length - 1]}.md`;
+		let path = `${CONSTANTS.baseDir}/${pathSegments.join('/')}`;
+		path = isFolder ? `${path}/${category.title}.md` : `${path}.md`;
 
 		return normalizePath(path);
 	}
