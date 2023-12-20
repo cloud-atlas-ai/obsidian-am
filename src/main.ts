@@ -39,6 +39,10 @@ const animateNotice = (notice: Notice) => {
 	noticeTimeout = setTimeout(() => animateNotice(notice), 500);
 };
 
+const CONSTANTS = {
+	 baseDir: "AmazingMarvin",
+}
+
 export default class AmazingMarvinPlugin extends Plugin {
 	settings: AmazingMarvinPluginSettings;
 	categories: Category[] = [];
@@ -111,6 +115,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		const baseUrl = 'https://serv.amazingmarvin.com/api'; // Replace with actual base URL
 
 		try {
+			this.app.vault.adapter.remove(CONSTANTS.baseDir);
 			// Fetch Categories and Projects
 			this.categories = await this.fetchMarvinData(`${baseUrl}/categories`);
 
@@ -138,7 +143,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 	getPathForCategory(category: Category) {
-		const baseDir = "AmazingMarvin";
 		let pathSegments: string[] = [];
 
 		// Function to recursively build the path segments array
@@ -161,7 +165,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		const fileName = hasChildren ? `${category.title}.md` : `index.md`; // Or `_CategoryName.md`
 
 		// Construct the path
-		let path = `${baseDir}/${pathSegments.join('/')}/`;
+		let path = `${CONSTANTS.baseDir}/${pathSegments.join('/')}/`;
 		path += hasChildren ? fileName : `${pathSegments[pathSegments.length - 1]}.md`;
 
 		return normalizePath(path);
