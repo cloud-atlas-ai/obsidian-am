@@ -40,7 +40,7 @@ const animateNotice = (notice: Notice) => {
 };
 
 const CONSTANTS = {
-	 baseDir: "AmazingMarvin",
+	baseDir: "AmazingMarvin",
 }
 
 export default class AmazingMarvinPlugin extends Plugin {
@@ -120,9 +120,32 @@ export default class AmazingMarvinPlugin extends Plugin {
 			this.categories = await this.fetchMarvinData(`${baseUrl}/categories`);
 
 			this.processCategories();
+			this.processInbox();
 		} catch (error) {
 			console.error('Error syncing Amazing Marvin data:', error);
 		}
+	}
+
+	async fetchInboxItems() {
+		const baseUrl = 'https://serv.amazingmarvin.com/api/children';
+		const inboxUrl = `${baseUrl}?parentId=unassigned`;
+
+		try {
+			return await this.fetchMarvinData(inboxUrl) as Task[];
+		} catch (error) {
+			console.error('Error fetching Amazing Marvin Inbox items:', error);
+			return [];
+		}
+	}
+
+	async processInbox() {
+		const inboxItems = await this.fetchInboxItems();
+		const content = this.formatTasks(inboxItems);
+
+		// Define the path for the Inbox file
+		const inboxFilePath = normalizePath("AmazingMarvin/Inbox.md");
+
+		await this.createOrUpdate(inboxFilePath, content);
 	}
 
 	async createOrUpdate(path: string, content: string) {
@@ -147,15 +170,15 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		// Function to recursively build the path segments array
 		const buildPathSegments = (cat: Category) => {
-				const safeTitle = cat.title.replace(/[^a-zA-Z0-9 -]/g, "");
-				pathSegments.unshift(safeTitle); // Add at the beginning
+			const safeTitle = cat.title.replace(/[^a-zA-Z0-9 -]/g, "");
+			pathSegments.unshift(safeTitle); // Add at the beginning
 
-				if (cat.parentId && cat.parentId !== "root") {
-						const parentCat = this.categories.find(c => c._id === cat.parentId);
-						if (parentCat) {
-								buildPathSegments(parentCat);
-						}
+			if (cat.parentId && cat.parentId !== "root") {
+				const parentCat = this.categories.find(c => c._id === cat.parentId);
+				if (parentCat) {
+					buildPathSegments(parentCat);
 				}
+			}
 		};
 
 		buildPathSegments(category);
@@ -169,7 +192,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		path += hasChildren ? fileName : `${pathSegments[pathSegments.length - 1]}.md`;
 
 		return normalizePath(path);
-}
+	}
 
 	async processCategories() {
 		for (const category of this.categories) {
