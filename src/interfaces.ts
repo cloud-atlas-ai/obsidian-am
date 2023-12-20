@@ -1,7 +1,7 @@
 export interface Category {
 	_id: string;
 	title: string;
-	categoryType: CategoryType;
+	type: CategoryType;
 	updatedAt: number;
 	parentId: string;
 	startDate: string;
@@ -28,7 +28,7 @@ export interface Task {
 
 
 export enum CategoryType {
-	Project = "Project",
-	Category = "Category",
+	Project = "project",
+	Category = "category",
 	// List of supported types: https://github.com/amazingmarvin/MarvinAPI/wiki/Marvin-Data-Types#categories-and-projects
 }
