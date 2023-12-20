@@ -1,5 +1,5 @@
 export interface Category {
-	id: string;
+	_id: string;
 	title: string;
 	categoryType: CategoryType;
 	updatedAt: number;
@@ -8,11 +8,12 @@ export interface Category {
 	endDate: string;
 	note: string;
 	isRecurring: boolean;
-	isMostImportantProject: boolean;
 	priority: string;
 }
 
 export interface Task {
+	done: boolean;
+	subtasks: Task [];
 	id: string;
 	title: string;
 	updatedAt: number;
@@ -23,7 +24,6 @@ export interface Task {
 	note: string;
 	isRecurring: boolean;
 	priority: string;
-	isDone: boolean;
 }
 
 
