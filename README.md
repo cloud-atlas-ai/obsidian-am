@@ -4,12 +4,6 @@ This is a plugin for [Obsidian](https://obsidian.md) to sync Amazing Marvin task
 
 This plugin is a courtesy of [Cloud Atlas](https://www.cloud-atlas.ai/) to help Obsidian and Amazing Marvin users integrate the two systems.
 
-## What is [Cloud Atlas](https://www.cloud-atlas.ai/)?
-
-Cloud Atlas provides intelligent and contextual assistance. It's a blend of a locally installed plugins and a server component that work collaboratively to give you access to a true second brain.
-
-By tapping into knowledge sources and computational models, Cloud Atlas offers a unique way to interact with information. It connects with external systems like weather services, maps, the Wolfram Knowledge base, Wikipedia, IMDB, and computational models like Wolfram Alpha and OpenAI ChatGPT. This allows Cloud Atlas to provide rich, context-aware insights and responses based on your context.
-
 ## Amazing Marvin Plugin Overview
 
 ...
