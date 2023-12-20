@@ -1,0 +1,10 @@
+{
+  "id": "cloudatlas-o-am",
+  "name": "Cloud Atlas Amazing Marvin Obsidian",
+  "version": "0.0.1",
+  "minAppVersion": "1.4.16",
+  "description": "Interoperability between Obsidian and Amazing Marvin",
+  "author": "Cloud Atlas",
+  "authorUrl": "https://cloud-atlas.ai",
+  "isDesktopOnly": false
+}
