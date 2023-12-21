@@ -43,4 +43,5 @@ jobs:
             --title="$tag" \
             --draft \
             dist/main-debug.js \
+            dist/main.js \
             ${{ env.PLUGIN_NAME }}.zip
