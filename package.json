@@ -1,6 +1,6 @@
 {
   "name": "cloud-atlas",
-  "version": "0.3.1",
+  "version": "0.3.2b",
   "description": "Interoperability between Obsidian and Amazing Marvin",
   "main": "dist/main.js",
   "scripts": {
