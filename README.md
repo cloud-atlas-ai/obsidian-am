@@ -64,3 +64,9 @@ Once synced, your Obsidian vault will contain a new `AmazingMarvin` folder. Insi
 5. Use `npm run dev` to watch for changes and compile the plugin to `dist/main.js`.
 
 For more detailed development instructions, refer to the [sample plugin](https://github.com/obsidianmd/obsidian-sample-plugin) provided by Obsidian.
+
+### Testing
+
+While you're testing, you're going to send a lot of requests to the Amazing Marvin API. To avoid hitting the rate limit, you can use the Desktop local API server. See [Desktop Local API Server](https://help.amazingmarvin.com/en/articles/5165191-desktop-local-api-server) for more information. Once setup, you can specify the local API server in the plugin settings.
+
+Note that the `/api/children` endpoint is not available in the local API server, always returning 404. I've followed up with the Amazing Marvin team to see if this can be added.
