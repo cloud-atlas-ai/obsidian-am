@@ -1,7 +1,7 @@
 export interface Category {
 	_id: string;
 	title: string;
-	type: CategoryType;
+	type: string;
 	updatedAt: number;
 	parentId: string;
 	startDate: string;
@@ -9,12 +9,15 @@ export interface Category {
 	note: string;
 	isRecurring: boolean;
 	priority: string;
+	deepLink: string;
+	dueDate: string;
+	done: boolean;
 }
 
 export interface Task {
 	done: boolean;
-	subtasks: Task [];
-	id: string;
+	subtasks: Task[];
+	_id: string;
 	title: string;
 	updatedAt: number;
 	parentId: string;
@@ -24,11 +27,6 @@ export interface Task {
 	note: string;
 	isRecurring: boolean;
 	priority: string;
-}
-
-
-export enum CategoryType {
-	Project = "project",
-	Category = "category",
-	// List of supported types: https://github.com/amazingmarvin/MarvinAPI/wiki/Marvin-Data-Types#categories-and-projects
+	type: string;
+	deepLink: string;
 }

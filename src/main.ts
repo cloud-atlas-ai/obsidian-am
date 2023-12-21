@@ -1,18 +1,14 @@
 import {
-	App,
-	Editor,
-	MarkdownView,
 	Notice,
 	Plugin,
-	TFile,
 	normalizePath,
+	request,
+	requestUrl,
 } from "obsidian";
 
-import { ViewUpdate, EditorView, ViewPlugin } from "@codemirror/view";
 
 import {
 	Category,
-	CategoryType,
 	Task
 } from "./interfaces";
 
@@ -41,6 +37,8 @@ const animateNotice = (notice: Notice) => {
 
 const CONSTANTS = {
 	baseDir: "AmazingMarvin",
+	categoriesEndpoint: `/api/categories`,
+	childrenEndpoint: `/api/children`,
 }
 
 export default class AmazingMarvinPlugin extends Plugin {
@@ -69,7 +67,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'ca-am-sync',
-			name: 'Import Amazing Marvin',
+			name: 'Import Categories and Tasks',
 			callback: () => {
 				this.sync().then(() => {
 					new Notice('Amazing Marvin data imported successfully.');
@@ -85,7 +83,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign(
-			{},
+			{ localServerHost: 'localhost', localServerPort: 12082 },
 			await this.loadData()
 		);
 	}
@@ -94,30 +92,53 @@ export default class AmazingMarvinPlugin extends Plugin {
 		this.saveData(this.settings);
 	}
 
-	async fetchMarvinData(url: string) {
-		const response = await fetch(url, {
-			method: 'GET',
-			headers: {
-				['X-API-Token']: this.settings.apiKey,
-				'Content-Type': 'application/json'
-			}
-		});
+	async fetchMarvinData(endpoint: string) {
+		const opt = this.settings;
+		let response;
+		let errorMessage = '';
 
-		if (!response.ok) {
-			throw new Error(`API request failed: ${response.status}`);
+		const url = `http://${opt.localServerHost}:${opt.localServerPort}${endpoint}`;
+		console.debug('Fetching from local server:', url); // Log URL for debugging
+
+		try {
+			response = await requestUrl({url: url,
+				headers: { 'X-API-Token': opt.apiKey }
+			});
+
+			if (response.status === 200) {
+				return response.json;
+			}
+
+			errorMessage = `[${response.status}] ${await response.text}`;
+		} catch (err) {
+			errorMessage = err.message;
+			console.error('Error fetching data from local server:', err);
 		}
 
-		return response.json();
+		if (!opt.useLocalServer || errorMessage) {
+			try {
+				response = await fetch(`https://serv.amazingmarvin.com${endpoint}`, {
+					headers: { 'X-API-Token': opt.apiKey }
+				});
+
+				if (response.ok) {
+					return response.json();
+				}
+
+				errorMessage = `[${response.status}] ${await response.text()}`;
+			} catch (err) {
+				errorMessage = err.message;
+			}
+		}
+
+		throw new Error(`Error fetching data: ${errorMessage}`);
 	}
 
 
 	async sync() {
-		const baseUrl = 'https://serv.amazingmarvin.com/api';
-
 		try {
 			this.app.vault.adapter.rmdir(CONSTANTS.baseDir, true);
-			// Fetch Categories and Projects
-			this.categories = await this.fetchMarvinData(`${baseUrl}/categories`);
+			this.categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
 
 			this.processCategories();
 			this.processInbox();
@@ -126,21 +147,28 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 	}
 
-	async fetchInboxItems() {
-		const baseUrl = 'https://serv.amazingmarvin.com/api/children';
-		const inboxUrl = `${baseUrl}?parentId=unassigned`;
-
+	async fetchTasksAndCategories(url: string): Promise<(Task | Category)[]> {
 		try {
-			return await this.fetchMarvinData(inboxUrl) as Task[];
+			const items = await this.fetchMarvinData(url) as (Task | Category)[];
+			return items.map(item => this.decorateWithDeepLink(item));
 		} catch (error) {
-			console.error('Error fetching Amazing Marvin Inbox items:', error);
+			console.error('Error fetching data from:', url, error);
 			return [];
 		}
 	}
 
+	decorateWithDeepLink(item: Task | Category): Task | Category {
+		const isTask = !item.type || item.type === 'task';
+		return {
+			...item,
+			deepLink: `https://app.amazingmarvin.com/#${isTask ? 't' : 'p'}=${item._id}`,
+			type: isTask ? 'task' : item.type
+		};
+	}
+
 	async processInbox() {
-		const inboxItems = await this.fetchInboxItems();
-		const content = this.formatTasks(inboxItems);
+		const inboxItems = await this.fetchTasksAndCategories(`${CONSTANTS.childrenEndpoint}?parentId=unassigned`);
+		const content = this.formatItems(inboxItems);
 
 		// Define the path for the Inbox file
 		const inboxFilePath = normalizePath("AmazingMarvin/Inbox.md");
@@ -211,57 +239,48 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 	}
 
-	async fetchTasks(categoryId: string): Promise<Task[]> {
-		const baseUrl = 'https://serv.amazingmarvin.com/api/children';
-		const url = `${baseUrl}?parentId=${categoryId}`;
+	formatItems(items: (Task | Category)[], level = 0, isSubtask = false) {
+		let taskContent = '';
+		let categoryContent = '';
 
-		try {
-			return await this.fetchMarvinData(url) as Task[];
-		} catch (error) {
-			console.error('Error fetching children for categoryId ID:', categoryId, error);
-			return [];
-		}
-	}
-
-	formatTasks(tasks: any[], level = 0) {
-
-		let content = '';
-
-		// Add a section for tasks (if you plan to include tasks within the same note)
-		content += `\n## Tasks\n`;
-
-		for (const task of tasks) {
-			// Indentation for nested tasks
+		for (const item of items) {
 			const indentation = ' '.repeat(level * 2);
+			const isCategoryOrProject = item.type === 'category' || item.type === 'project';
 
-			// Checkbox for task completion
-			content += `${indentation}- [${task.done ? 'x' : ' '}] `;
-
-			content += ` [⚓](https://app.amazingmarvin.com/#t=${task._id}) `;
-
-			// task details
-			content += this.formatTaskDetails(task, indentation);
-
-			if (task.type === 'project' || task.type === 'category') {
-				const path = this.getPathForCategory(task); // Assuming similar structure for projects
-				content += `[[${path}|${task.title}]]`;
+			if (isCategoryOrProject) {
+				// Handle category or project formatting
+				const path = this.getPathForCategory(item);
+				categoryContent += `${indentation}- [[${path}|${item.title}]] [⚓](${item.deepLink})\n`;
 			} else {
-				// Regular task formatting
-				content += this.formatTaskDetails(task, indentation) + task.title;
-			}
-			content += '\n';
+				// Handle task formatting
+				taskContent += `${indentation}- [${item.done ? 'x' : ' '}] ${item.title}`;
+				if (!isSubtask) { // Only add deep links to top-level tasks
+					taskContent += ` [⚓](${item.deepLink})`;
+				}
+				taskContent += '\n';
 
-			// Recursively format sub-tasks
-			if (task.subtasks && Object.keys(task.subtasks).length > 0) {
-				const subtasks = Object.values(task.subtasks);
-				content += this.formatTasks(subtasks, level + 1);
+				// Recursively format sub-tasks if any
+				if ('subtasks' in item && item.subtasks && Object.keys(item.subtasks).length > 0) {
+					const subtasks = Object.values(item.subtasks);
+					taskContent += this.formatItems(subtasks, level + 1, true); // Pass true for isSubtask
+				}
 			}
 		}
 
+		// Combine categories/projects and tasks into one content string
+		let content = '';
+		if (categoryContent) {
+			content += `\n## Categories and Projects\n${categoryContent}`;
+		}
+		if (taskContent && !isSubtask) { // Only add "Tasks" header for top-level tasks
+			content += `\n## Tasks\n${taskContent}`;
+		} else if (isSubtask) {
+			content += taskContent;
+		}
 		return content;
 	}
 
-	formatTaskDetails(task: Task, indentation: string) {
+	formatTaskDetails(task: Task | Category, indentation: string) {
 		let details = '';
 
 		// Example of adding some task details - expand as needed
@@ -281,16 +300,16 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		// Iterate over category properties and add non-null values to YAML frontmatter
 		for (const [key, value] of Object.entries(category)) {
-				if (value !== null && value !== undefined) {
-						const safeValue = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
-						yamlFrontmatter += `${key}: ${safeValue}\n`;
-				}
+			if (value !== null && value !== undefined) {
+				const safeValue = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
+				yamlFrontmatter += `${key}: ${safeValue}\n`;
+			}
 		}
 
 		// Close YAML frontmatter block
 		yamlFrontmatter += "---\n";
 
-		let content = `# [⚓](https://app.amazingmarvin.com/#p=${category._id}) ${category.title}\n\n`;
+		let content = `# [⚓](${category.deepLink}) ${category.title}\n\n`;
 
 		// Link to parent category, if it exists
 		if (category.parentId && category.parentId !== "root") {
@@ -299,31 +318,9 @@ export default class AmazingMarvinPlugin extends Plugin {
 				content += `Back to [[${parentCategory.title}]]\n\n`;
 			}
 		}
-
-		// Add metadata if available
-		if (category.note) {
-			content += `**Note:** ${category.note}\n\n`;
-		}
-
-		if (category.startDate) {
-			content += `**Start Date::** ${category.startDate}\n`;
-		}
-
-		if (category.endDate) {
-			content += `**End Date::** ${category.endDate}\n`;
-		}
-
-		if (category.isRecurring) {
-			content += `**Recurring::** Yes\n`;
-		}
-
-		if (category.priority) {
-			content += `**Priority::** ${category.priority}\n`;
-		}
-
 		// Fetch and format tasks
-		const tasks = await this.fetchTasks(category._id);
-		content += this.formatTasks(tasks);
+		const children = await this.fetchTasksAndCategories(`${CONSTANTS.childrenEndpoint}?parentId=${category._id}`);
+		content += this.formatItems(children);
 
 		return yamlFrontmatter + content;
 	}
