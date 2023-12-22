@@ -46,7 +46,22 @@ By following these guidelines, you can ensure your Amazing Marvin data is accura
 
 Once synced, your Obsidian vault will contain a new `AmazingMarvin` folder. Inside, you'll find the structured notes corresponding to your categories and projects from Amazing Marvin.
 
-## Manually Installing the Plugin
+## Installing
+
+### Using BRAT
+
+1. Install the BRAT plugin
+    1. Open `Settings` -> `Community Plugins`
+    2. Disable safe mode, if enabled
+    3. *Browse*, and search for "BRAT" 
+    4. Install the latest version of **Obsidian42 - BRAT**
+2. Open BRAT settings (`Settings` -> `BRAT`)
+    1. Scroll to the `Beta Plugin List` section
+    2. `Add Beta Plugin`
+    3. Specify this repository: `cloud-atlas-ai/obsidian-am`
+3. Enable the `Amazing Marvin` plugin (`Settings` -> `Community Plugins`)
+
+### Manually
 
 1. If you haven't enabled community plugins in Obsidian, follow these [instructions](https://help.obsidian.md/Extending+Obsidian/Community+plugins#Install+a+community+plugin) to do so.
 2. Download the latest release from the [releases](https://github.com/cloud-atlas-ai/obsidian-am/releases) page.
