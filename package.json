@@ -11,7 +11,10 @@
   },
   "keywords": [],
   "author": "",
-  "license": "TBD",
+  "license": "MIT",
+  "dependencies": {
+    "obsidian-daily-notes-interface": "^0.9.4"
+  },
   "devDependencies": {
     "@types/node": "^20.9.4",
     "@typescript-eslint/eslint-plugin": "^6.12.0",
