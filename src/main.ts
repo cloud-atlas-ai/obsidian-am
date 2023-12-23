@@ -1,8 +1,8 @@
 import {
 	Notice,
 	Plugin,
+	Tasks,
 	normalizePath,
-	request,
 	requestUrl,
 } from "obsidian";
 
@@ -15,7 +15,12 @@ import {
 import {
 	AmazingMarvinSettingsTab,
 	AmazingMarvinPluginSettings,
+	DEFAULT_SETTINGS,
 } from "./settings";
+
+import {
+	getDateFromFile
+} from "obsidian-daily-notes-interface";
 
 let noticeTimeout: NodeJS.Timeout;
 
@@ -37,8 +42,10 @@ const animateNotice = (notice: Notice) => {
 
 const CONSTANTS = {
 	baseDir: "AmazingMarvin",
-	categoriesEndpoint: `/api/categories`,
-	childrenEndpoint: `/api/children`,
+	categoriesEndpoint: '/api/categories',
+	childrenEndpoint: '/api/children',
+	scheduledOnDayEndpoint: '/api/todayItems',
+	dueOnDayEndpoint: '/api/dueItems,'
 }
 
 export default class AmazingMarvinPlugin extends Plugin {
@@ -66,7 +73,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		this.addSettingTab(new AmazingMarvinSettingsTab(this.app, this));
 
 		this.addCommand({
-			id: 'ca-am-sync',
+			id: 'am-import',
 			name: 'Import Categories and Tasks',
 			callback: () => {
 				this.sync().then(() => {
@@ -77,13 +84,40 @@ export default class AmazingMarvinPlugin extends Plugin {
 				});
 			}
 		});
+		this.addCommand({
+			id: "am-import-today",
+			name: "Import Today's Tasks",
+			editorCallback: async (editor, view) => {
+				try {
+					const today = new Date().toISOString().split('T')[0];
+					const fileDate = view.file ? getDateFromFile(view.file, "day")?.format("YYYY-MM-DD") : today;
+
+					const date = fileDate ? fileDate : today;
+					let tasks = [];
+					if (this.settings.todayTasksToShow === 'due' || this.settings.todayTasksToShow === 'both') {
+						const dueTasks = await this.getDueTasks(date);
+						tasks.push(...dueTasks);
+					}
+					if (this.settings.todayTasksToShow === 'scheduled' || this.settings.todayTasksToShow === 'both') {
+						const scheduledTasks = await this.getScheduledTasks(date);
+						tasks.push(...scheduledTasks);
+					}
+
+					editor.replaceRange(this.formatItems(tasks, 1, false), editor.getCursor());
+				} catch (error) {
+					new Notice(`Error importing scheduled tasks: ${error}`);
+					console.error(`Error importing scheduled tasks: ${error}`);
+				}
+			}
+		});
+
 	}
 
 	onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign(
-			{ localServerHost: 'localhost', localServerPort: 12082 },
+			DEFAULT_SETTINGS,
 			await this.loadData()
 		);
 	}
@@ -156,6 +190,40 @@ export default class AmazingMarvinPlugin extends Plugin {
 			console.error('Error fetching data from:', url, error);
 			return [];
 		}
+	}
+
+	getScheduledTasks(date: string): Promise<(Task | Category)[]> {
+		let errorMessages = [];
+
+		try {
+			return this.fetchTasksAndCategories(`${CONSTANTS.scheduledOnDayEndpoint}?date=${date}`);
+		} catch (error) {
+			console.error(`Error fetching scheduled tasks: ${error}`);
+			errorMessages.push(`Error fetching scheduled tasks`);
+		}
+
+		if (errorMessages.length > 0) {
+			const message = `Encountered errors while fetching tasks:\n\n${errorMessages.join('\n')}\nSee console for details.`;
+			new Notice(message);
+		}
+		return Promise.resolve([]);
+	}
+
+	getDueTasks(date: string): Promise<(Task | Category)[]> {
+		let errorMessages = [];
+
+		try {
+			return this.fetchTasksAndCategories(`${CONSTANTS.dueOnDayEndpoint}?date=${date}`);
+		} catch (error) {
+			console.error(`Error fetching scheduled tasks: ${error}`);
+			errorMessages.push(`Error fetching scheduled tasks`);
+		}
+
+		if (errorMessages.length > 0) {
+			const message = `Encountered errors while fetching tasks:\n\n${errorMessages.join('\n')}\nSee console for details.`;
+			new Notice(message);
+		}
+		return Promise.resolve([]);
 	}
 
 	decorateWithDeepLink(item: Task | Category): Task | Category {
@@ -253,12 +321,13 @@ export default class AmazingMarvinPlugin extends Plugin {
 				const path = this.getPathForCategory(item);
 				categoryContent += `${indentation}- [[${path}|${item.title}]] [⚓](${item.deepLink})\n`;
 			} else {
-				// Handle task formatting
-				taskContent += `${indentation}- [${item.done ? 'x' : ' '}] ${item.title}`;
 				if (!isSubtask) { // Only add deep links to top-level tasks
-					taskContent += ` [⚓](${item.deepLink})`;
+					taskContent += `${indentation}- [${item.done ? 'x' : ' '}] [⚓](${item.deepLink}) ${this.formatTaskDetails(item as Task, indentation)}`;
+				} else {
+					taskContent += `${indentation}- [${item.done ? 'x' : ' '}] `;
 				}
-				taskContent += '\n';
+
+				taskContent += `${item.title}\n`;
 
 				// Recursively format sub-tasks if any
 				if ('subtasks' in item && item.subtasks && Object.keys(item.subtasks).length > 0) {
@@ -281,22 +350,24 @@ export default class AmazingMarvinPlugin extends Plugin {
 		return content;
 	}
 
-	formatTaskDetails(task: Task | Category, indentation: string) {
+	formatTaskDetails(task: Task, indentation: string) {
 		let details = '';
+		const settings = this.settings;
 
-		// Example of adding some task details - expand as needed
-		if (task.dueDate) {
+		if (settings.showDueDate && task.dueDate) {
 			details += `Due Date:: [[${task.dueDate}]] `;
 		}
-		if (task.startDate) {
+		if (settings.showStartDate && task.startDate) {
 			details += `Start Date:: [[${task.startDate}]] `;
 		}
-		// Add other relevant properties here...
+		if (settings.showScheduledDate && task.day) {
+			details += `Scheduled Date:: [[${task.day}]] `;
+		}
 
 		return details;
 	}
 
-	toYamlValue(value : any): string {
+	toYamlValue(value: any): string {
 		if (typeof value === 'string') {
 			return `"${value.replace(/"/g, '\\"')}"`;
 		} else if (Array.isArray(value)) {

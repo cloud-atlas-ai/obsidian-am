@@ -21,10 +21,13 @@ export interface Task {
 	title: string;
 	updatedAt: number;
 	parentId: string;
+	day: string
+	firstScheduled: string;
 	startDate: string;
 	dueDate: string;
 	endDate: string;
 	note: string;
+	doneAt: number;
 	isRecurring: boolean;
 	priority: string;
 	type: string;
