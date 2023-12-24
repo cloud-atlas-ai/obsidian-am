@@ -2,6 +2,7 @@ import { App, Platform, PluginSettingTab, Setting } from "obsidian";
 import AmazingMarvinPlugin from "./main";
 
 export interface AmazingMarvinPluginSettings {
+	attemptToMarkTasksAsDone: any;
 	useLocalServer: boolean;
 	localServerHost: string;
 	localServerPort: any;
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: AmazingMarvinPluginSettings = {
 	showStartDate: true,
 	showScheduledDate: true,
 	todayTasksToShow: 'both',
+	attemptToMarkTasksAsDone: false
 };
 
 export class AmazingMarvinSettingsTab extends PluginSettingTab {
@@ -67,6 +69,17 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 						this.plugin.settings.apiKey = value;
 						await this.plugin.saveSettings();
 					})
+			);
+
+		new Setting(containerEl)
+			.setName("Mark tasks as done")
+			.setDesc("Attempt to mark tasks as done in Amazing Marvin")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.attemptToMarkTasksAsDone)
+				.onChange(async (value) => {
+					this.plugin.settings.attemptToMarkTasksAsDone = value;
+					await this.plugin.saveSettings();
+				})
 			);
 
 		new Setting(containerEl)

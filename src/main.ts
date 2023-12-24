@@ -1,8 +1,10 @@
 import {
+	App,
 	Notice,
 	Plugin,
 	Tasks,
 	normalizePath,
+	request,
 	requestUrl,
 } from "obsidian";
 
@@ -21,6 +23,7 @@ import {
 import {
 	getDateFromFile
 } from "obsidian-daily-notes-interface";
+import { amTaskWatcher } from "./amTaskWatcher";
 
 let noticeTimeout: NodeJS.Timeout;
 
@@ -49,6 +52,7 @@ const CONSTANTS = {
 }
 
 export default class AmazingMarvinPlugin extends Plugin {
+
 	settings: AmazingMarvinPluginSettings;
 	categories: Category[] = [];
 
@@ -71,6 +75,9 @@ export default class AmazingMarvinPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new AmazingMarvinSettingsTab(this.app, this));
+		if (this.settings.attemptToMarkTasksAsDone) {
+			this.registerEditorExtension(amTaskWatcher(this.app, this));
+		}
 
 		this.addCommand({
 			id: 'am-import',
@@ -126,14 +133,41 @@ export default class AmazingMarvinPlugin extends Plugin {
 		this.saveData(this.settings);
 	}
 
+	async markDone(taskId: string) {
+		console.debug('Marking task as done:', taskId);
+		const opt = this.settings;
+		const requestBody = {
+			itemId: taskId,
+			timeZoneOffset: new Date().getTimezoneOffset()
+		};
+
+		try {
+			const remoteResponse = await requestUrl({
+				url: `https://serv.amazingmarvin.com/api/markDone`,
+				method: 'POST',
+				headers: {
+					'X-API-Token': opt.apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			if (remoteResponse.status === 200) {
+				new Notice("Task marked as done in Amazing Marvin.");
+				return remoteResponse.json;
+			}
+		} catch (error) {
+			console.error('Error marking task as done:', error);
+		}
+	}
+
+
 	async fetchMarvinData(endpoint: string) {
 		const opt = this.settings;
 		let response;
 		let errorMessage = '';
 
 		const url = `http://${opt.localServerHost}:${opt.localServerPort}${endpoint}`;
-		console.debug('Fetching from local server:', url); // Log URL for debugging
-
 		try {
 			response = await requestUrl({
 				url: url,
@@ -413,5 +447,3 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 }
-
-
