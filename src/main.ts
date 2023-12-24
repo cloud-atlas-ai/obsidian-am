@@ -1,10 +1,7 @@
 import {
-	App,
 	Notice,
 	Plugin,
-	Tasks,
 	normalizePath,
-	request,
 	requestUrl,
 } from "obsidian";
 
@@ -48,14 +45,13 @@ const CONSTANTS = {
 	categoriesEndpoint: '/api/categories',
 	childrenEndpoint: '/api/children',
 	scheduledOnDayEndpoint: '/api/todayItems',
-	dueOnDayEndpoint: '/api/dueItems,'
+	dueOnDayEndpoint: '/api/dueItems'
 }
 
 export default class AmazingMarvinPlugin extends Plugin {
 
 	settings: AmazingMarvinPluginSettings;
 	categories: Category[] = [];
-	markAsDoneAttempted: string[] = [];
 
 	createFolder = async (path: string) => {
 		try {
@@ -84,6 +80,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 			id: 'am-import',
 			name: 'Import Categories and Tasks',
 			callback: () => {
+				animateNotice(new Notice('Importing from Amazing Marvin...'));
 				this.sync().then(() => {
 					new Notice('Amazing Marvin data imported successfully.');
 				}).catch((error) => {
@@ -135,10 +132,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 	async markDone(taskId: string) {
-		if (this.markAsDoneAttempted.includes(taskId)) {
-			return;
-		}
-
 		const opt = this.settings;
 		const requestBody = {
 			itemId: taskId,
@@ -146,7 +139,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 		};
 
 		try {
-			this.markAsDoneAttempted.push(taskId);
 			const remoteResponse = await requestUrl({
 				url: `https://serv.amazingmarvin.com/api/markDone`,
 				method: 'POST',
@@ -408,7 +400,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		if (settings.showStartDate && task.startDate) {
 			details += `Start Date:: [[${task.startDate}]] `;
 		}
-		if (settings.showScheduledDate && task.day) {
+		if (settings.showScheduledDate && task.day && task.day !== 'unassigned') {
 			details += `Scheduled Date:: [[${task.day}]] `;
 		}
 

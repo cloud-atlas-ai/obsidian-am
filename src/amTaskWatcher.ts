@@ -5,51 +5,30 @@ import {
   ViewPlugin,
   ViewUpdate,
 } from '@codemirror/view';
-import { RegExpCursor } from "./regexp-cursor";
 
+const COMPLETED_AM_TASK = /^\s*[-*+]\s\[[xX]\]\s\[⚓\]\(https:\/\/app\.amazingmarvin\.com\/#t=([^)\s]+)/;
 
-export function amTaskWatcher(app: App, plugin: AmazingMarvinPlugin) {
+export function amTaskWatcher(_app: App, plugin: AmazingMarvinPlugin) {
   return ViewPlugin.fromClass(
     class {
       constructor(public view: EditorView) {
-        this.updateDecorations(view);
       }
 
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
-          this.updateDecorations(update.view);
+        if (!update.docChanged) {
+          return;
         }
-      }
+        update.changes.iterChanges((fromA, _toA, _fromB, _toB, change) => {
+          //only match if the change is a single character and it's an X or x
+          if (change.length === 1 && (change.sliceString(0, 1) === "X" || change.sliceString(0, 1) === "x")) {
+            let line = update.state.doc.lineAt(fromA).text;
 
-      updateDecorations(view: EditorView) {
-        // Process only visible ranges
-        for (let part of view.visibleRanges) {
-          const taskCursor = new RegExpCursor(view.state.doc,
-            "^\\s*([-*+])\\s\\[(.)\\]",
-            {}, part.from, part.to);
-
-
-          while (!taskCursor.next().done) {
-            let { from, to } = taskCursor.value;
-            const line = view.state.doc.lineAt(from);
-            // Check if the task is marked as completed
-            if (line.text.match(/^\s*[-*+]\s\[[xX]\]\s\[⚓\]/)) {
-              // Logic for handling completed tasks with deep links
-              this.handleCompletedTask(line.text);
+            const match = line.match(COMPLETED_AM_TASK);
+            if (match && match[1]) {
+              plugin.markDone(match[1]);
             }
           }
-        }
-      }
-
-      handleCompletedTask(taskLine: string) {
-        const regex = /https:\/\/app\.amazingmarvin\.com\/#t=([^)\s]+)/;
-        const match = taskLine.match(regex);
-
-        let itemId: string;
-        if (match && match[1]) {
-          itemId = match[1];
-          plugin.markDone(itemId);
-        }
+        });
       }
     },
     {
