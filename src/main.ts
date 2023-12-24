@@ -1,10 +1,7 @@
 import {
-	App,
 	Notice,
 	Plugin,
-	Tasks,
 	normalizePath,
-	request,
 	requestUrl,
 } from "obsidian";
 
@@ -83,6 +80,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 			id: 'am-import',
 			name: 'Import Categories and Tasks',
 			callback: () => {
+				animateNotice(new Notice('Importing from Amazing Marvin...'));
 				this.sync().then(() => {
 					new Notice('Amazing Marvin data imported successfully.');
 				}).catch((error) => {
@@ -402,7 +400,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		if (settings.showStartDate && task.startDate) {
 			details += `Start Date:: [[${task.startDate}]] `;
 		}
-		if (settings.showScheduledDate && task.day) {
+		if (settings.showScheduledDate && task.day && task.day !== 'unassigned') {
 			details += `Scheduled Date:: [[${task.day}]] `;
 		}
 
