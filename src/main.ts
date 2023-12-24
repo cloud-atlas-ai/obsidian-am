@@ -134,7 +134,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 	}
 
 	async markDone(taskId: string) {
-		console.debug('Marking task as done:', taskId);
 		const opt = this.settings;
 		const requestBody = {
 			itemId: taskId,
@@ -157,6 +156,15 @@ export default class AmazingMarvinPlugin extends Plugin {
 				return remoteResponse.json;
 			}
 		} catch (error) {
+			const errorNote = document.createDocumentFragment();
+			errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
+			a.text = 'manually';
+			a.target = '_blank';
+			errorNote.appendChild(a);
+
+			new Notice(errorNote, 0);
 			console.error('Error marking task as done:', error);
 		}
 	}
