@@ -196,7 +196,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
 
-			if(error.remoteResponse.status === 429){
+			if (error.remoteResponse.status === 429) {
 				errorNote.appendText('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it ');
 				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
 			} else {
@@ -252,7 +252,14 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
-			errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
+			if (error.remoteResponse.status === 429) {
+				errorNote.appendText('Your request was throttled by Amazing Marvin. Or do it manually at ');
+				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
+			} else {
+				errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
+				console.error('Error marking task as done:', error);
+			}
+
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
 			a.text = 'manually';
@@ -260,7 +267,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 			errorNote.appendChild(a);
 
 			new Notice(errorNote, 0);
-			console.error('Error marking task as done:', error);
 		}
 	}
 
@@ -299,7 +305,11 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 				errorMessage = `[${response.status}] ${await response.text()}`;
 			} catch (err) {
-				errorMessage = err.message;
+				if (response?.status === 429) {
+					errorMessage = 'Your request was throttled by Amazing Marvin.';
+				} else {
+					errorMessage = err.message;
+				}
 			}
 		}
 
