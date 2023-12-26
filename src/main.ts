@@ -195,7 +195,14 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
-			errorNote.appendText('Error creating task in Amazing Marvin. Try again or do it ');
+
+			if(error.remoteResponse.status === 429){
+				errorNote.appendText('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it ');
+				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
+			} else {
+				errorNote.appendText('Error creating task in Amazing Marvin. You can try again or do it ');
+				console.error('Error creating task:', error);
+			}
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/';
 			a.text = 'manually';
@@ -204,7 +211,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 			errorNote.appendText('.');
 
 			new Notice(errorNote, 0);
-			console.error('Error creating task:', error);
 		}
 		return Promise.reject(new Error('Error creating task'));
 	}
