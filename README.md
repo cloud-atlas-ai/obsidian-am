@@ -37,14 +37,35 @@ To initiate a sync:
 2. Search for and select the command `Sync Amazing Marvin categories and projects`.
 3. The plugin will then proceed to update your Obsidian vault with the current structure and content from Amazing Marvin.
 
+Once synced, your Obsidian vault will contain a new `AmazingMarvin` folder. Inside, you'll find the structured notes corresponding to your categories and projects from Amazing Marvin.
+
 ### Creating a Marvin Task
+
+The task creation dialog is designed to mirror the task input experience in Amazing Marvin closely. It includes the following features:
+
+- Autocomplete for Categories and Projects using `#` syntax or a search sub-dialog.
+- Recognizes shorthand notations for properties like start date (`~`), due date (`@`), and labels (`+`).
+- Places a link to the Marvin task as a deep link in Obsidian at the cursor location upon task creation.
+- The created Marvin task contains an Advanced URI-friendly link back to the Obsidian note that instigated the task.
 
 To create a task:
 
 1. Open Obsidian's Command Palette with `Ctrl/Cmd + P`.
 2. Search for and select the command `Create Marvin Task`.
 3. Input the task details and select the appropriate category from the dropdown, which shows suggestions as you type.
-4. Upon task creation, a markdown link to the Marvin task is inserted at your cursor location in Obsidian, and the Amazing Marvin task contains a URI-friendly link back to the triggering Obsidian note.
+4. Upon task creation, a markdown checklist item with a link to the Marvin task is inserted at your cursor location in Obsidian.
+
+### Auto-Mark as Done Feature
+
+One of the highlights in this version is the ability to auto-mark tasks as done in Amazing Marvin when they are checked off in Obsidian. When this feature is enabled in the plugin settings, checking a task off in your Obsidian note will automatically update the task status in Amazing Marvin.
+
+Here's how to enable this feature:
+
+1. Go to `Settings > Obsidian Amazing Marvin Plugin`.
+2. Check the option `Attempt to mark tasks as done in Amazing Marvin when checked off in Obsidian`.
+3. Save your settings.
+
+Now, when you check off a task with an Amazing Marvin Link in an Obsidian note, a request will be sent to Amazing Marvin to mark the task as done there as well.
 
 ### Important Considerations
 
@@ -53,9 +74,6 @@ To create a task:
 
 By following these guidelines, you can ensure your Amazing Marvin data is accurately reflected in Obsidian while being mindful of the plugin's current limitations.
 
-### Viewing Synced Content
-
-Once synced, your Obsidian vault will contain a new `AmazingMarvin` folder. Inside, you'll find the structured notes corresponding to your categories and projects from Amazing Marvin.
 
 ## Installing
 
