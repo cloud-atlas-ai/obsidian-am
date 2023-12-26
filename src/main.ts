@@ -84,6 +84,17 @@ export default class AmazingMarvinPlugin extends Plugin {
 			editorCallback: async (editor, view) => {
 				// Fetch categories first and make sure they are loaded
 				try {
+
+					//if a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
+					if (editor.somethingSelected() && editor.getSelection().length > 2) {
+						this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName()).then(task => {
+							editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
+						}).catch(error => {
+							new Notice('Could not create Marvin task: ' + error.message);
+						});
+						return;
+					}
+
 					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
 					// Ensure categories are fetched before initializing the modal
 					if (categories.length > 0) {
