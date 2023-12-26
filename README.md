@@ -93,7 +93,7 @@ By following these guidelines, you can ensure your Amazing Marvin data is accura
 ### Manually
 
 1. If you haven't enabled community plugins in Obsidian, follow these [instructions](https://help.obsidian.md/Extending+Obsidian/Community+plugins#Install+a+community+plugin) to do so.
-2. Download the latest release from the [releases](https://github.com/cloud-atlas-ai/obsidian-am/releases) page.
+2. Download `cloudatlas-obsidian-am.zip` from the [releases](https://github.com/cloud-atlas-ai/obsidian-am/releases).
 3. Unzip the release and copy the directory into your vault's plugins folder: `<vault>/.obsidian/plugins/cloudatlas-o-am`.
 4. Restart Obsidian to recognize the new plugin.
 5. In Obsidian's settings under "Community Plugins," find and enable the Obsidian Amazing Marvin Plugin.
