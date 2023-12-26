@@ -13,6 +13,8 @@ The Amazing Marvin Plugin provides a way to bring your tasks and project structu
 - **Parent Links**: For easy navigation, notes for subcategories and subprojects include backlinks to their parent category or project.
 - **Wiki Links**: Sub-Categories and projects Amazing Marvin are added as wiki links.
 - **Categories and Projects are folder notes**: Categories and projects are created as folder notes, compatible with [Obsidian folder notes](https://github.com/LostPaul/obsidian-folder-notes).
+- **Task Creation**: Users can create Amazing Marvin tasks directly within Obsidian, with support for standard Marvin shorthand notations like `+` for dates or `@` for labels.
+- **Deep Linking**: Each task and category is equipped with a deep link, providing quick navigation back to Amazing Marvin.
 
 ## Usage Instructions
 
@@ -35,6 +37,15 @@ To initiate a sync:
 2. Search for and select the command `Sync Amazing Marvin categories and projects`.
 3. The plugin will then proceed to update your Obsidian vault with the current structure and content from Amazing Marvin.
 
+### Creating a Marvin Task
+
+To create a task:
+
+1. Open Obsidian's Command Palette with `Ctrl/Cmd + P`.
+2. Search for and select the command `Create Marvin Task`.
+3. Input the task details and select the appropriate category from the dropdown, which shows suggestions as you type.
+4. Upon task creation, a markdown link to the Marvin task is inserted at your cursor location in Obsidian, and the Amazing Marvin task contains a URI-friendly link back to the triggering Obsidian note.
+
 ### Important Considerations
 
 - **Data Loss**: Be cautious when editing Amazing Marvin-generated notes in Obsidian, as these changes will be overwritten by the next sync.
@@ -53,7 +64,7 @@ Once synced, your Obsidian vault will contain a new `AmazingMarvin` folder. Insi
 1. Install the BRAT plugin
     1. Open `Settings` -> `Community Plugins`
     2. Disable safe mode, if enabled
-    3. *Browse*, and search for "BRAT" 
+    3. *Browse*, and search for "BRAT"
     4. Install the latest version of **Obsidian42 - BRAT**
 2. Open BRAT settings (`Settings` -> `BRAT`)
     1. Scroll to the `Beta Plugin List` section
