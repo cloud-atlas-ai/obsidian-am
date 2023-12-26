@@ -5,7 +5,6 @@ import {
 	requestUrl,
 } from "obsidian";
 
-
 import {
 	Category,
 	Task
@@ -21,6 +20,7 @@ import {
 	getDateFromFile
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
+import { AddTaskModal } from "./addTaskModal";
 
 let noticeTimeout: NodeJS.Timeout;
 
@@ -47,6 +47,7 @@ const CONSTANTS = {
 	scheduledOnDayEndpoint: '/api/todayItems',
 	dueOnDayEndpoint: '/api/dueItems'
 }
+
 
 export default class AmazingMarvinPlugin extends Plugin {
 
@@ -75,6 +76,40 @@ export default class AmazingMarvinPlugin extends Plugin {
 		if (this.settings.attemptToMarkTasksAsDone) {
 			this.registerEditorExtension(amTaskWatcher(this.app, this));
 		}
+
+		this.addCommand({
+			id: "create-marvin-task",
+			name: "Create Marvin Task",
+			editorCallback: async (editor, view) => {
+				// Fetch categories first and make sure they are loaded
+				try {
+					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
+					console.log('Categories:', categories); // For debug purposes
+					// Ensure categories are fetched before initializing the modal
+					if (categories.length > 0) {
+						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
+							console.log('Task details:', taskDetails);
+
+							// Now you can add the logic to create a Marvin task here using the API...
+							// For example:
+							// this.createMarvinTask(taskDetails.catId, taskDetails.task)
+							// .then(task => {
+							//     editor.replaceRange(`[Marvin Task](${task.deepLink})`, editor.getCursor());
+							// })
+							// .catch(error => {
+							//     new Notice('Could not create Marvin task: ' + error.message);
+							// });
+						}).open();
+					} else {
+						// Handle the case where categories could not be loaded
+						new Notice('Failed to load categories from Amazing Marvin.');
+					}
+				} catch (error) {
+					console.error('Error fetching categories:', error);
+					new Notice('Failed to load categories from Amazing Marvin.');
+				}
+			}
+		});
 
 		this.addCommand({
 			id: 'am-import',
