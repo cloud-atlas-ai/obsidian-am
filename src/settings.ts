@@ -153,6 +153,10 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 					.setPlaceholder("localhost")
 					.setValue(this.plugin.settings.localServerHost || "localhost")
 					.setDisabled(!this.plugin.settings.useLocalServer)
+					.onChange(async (value) => {
+						this.plugin.settings.localServerHost = value;
+						await this.plugin.saveSettings();
+					})
 				);
 
 			// Local Server Port
@@ -162,16 +166,19 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 					.setPlaceholder("12082")
 					.setValue(this.plugin.settings.localServerPort?.toString() || "12082")
 					.setDisabled(!this.plugin.settings.useLocalServer)
+					.onChange(async (value) => {
+						this.plugin.settings.localServerPort = value;
+						await this.plugin.saveSettings();
+					})
 				);
 
 			// Update the disabled state based on the toggle
 			localServerToggle.addToggle(toggle => toggle.onChange(async (value) => {
 				this.plugin.settings.useLocalServer = value;
-				await this.plugin.saveSettings();
-
 				localServerHostSetting.setDisabled(!value);
 				localServerPortSetting.setDisabled(!value);
-			}));
+				await this.plugin.saveSettings();
+			}).setValue(this.plugin.settings.useLocalServer));
 
 		}
 	}
