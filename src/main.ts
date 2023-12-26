@@ -88,7 +88,8 @@ export default class AmazingMarvinPlugin extends Plugin {
 					// Ensure categories are fetched before initializing the modal
 					if (categories.length > 0) {
 						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
-							this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName())
+							console.debug(`TaskModal result: ${taskDetails.catId} - ${taskDetails.task}}`);
+							this.addMarvinTask(taskDetails.catId, taskDetails.task)
 								.then(task => {
 									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
 								})
@@ -148,21 +149,20 @@ export default class AmazingMarvinPlugin extends Plugin {
 		});
 
 	}
-	async addMarvinTask(catId: string, taskTitle: string, notePath: string = '', vaultName: string = ''): Promise<Task> {
+	async addMarvinTask(catId: string, taskTitle: string): Promise<Task> {
 		const opt = this.settings;
 
-		let requestBody: any = {
-			title: taskTitle,
-			timeZoneOffset: new Date().getTimezoneOffset(),
-		};
-
-		if (catId && catId !== '' && catId !== 'root' && catId !== '__inbox-faux__') {
-			requestBody.parentId = catId;
-		}
-
-		if (notePath && notePath !== '') {
-			requestBody.note = `[🏷️](obsidian://advanced-uri?filePath=${notePath}${vaultName !== '' ? `&vault=${vaultName}` : ''})`;
-		}
+		let requestBody = (catId === '' || catId === undefined || catId === "root" || catId === "__inbox-faux__") ?
+			{
+				title : taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+			}
+			:
+			{
+				title: taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+				parentId: catId,
+			};
 
 		try {
 			const remoteResponse = await requestUrl({
