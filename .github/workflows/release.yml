@@ -44,4 +44,5 @@ jobs:
             --draft \
             dist/main-debug.js \
             dist/main.js \
+            dist/mainifest.json \
             ${{ env.PLUGIN_NAME }}.zip
