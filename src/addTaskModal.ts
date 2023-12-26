@@ -110,6 +110,13 @@ export class AddTaskModal extends Modal {
         });
       }).settingEl.addClass("am-task-textarea-setting");
 
+    const shortcutsDesc = document.createDocumentFragment();
+    shortcutsDesc.appendText('The Task field accepts labels (@), time estimates (~), and scheduled dates (+). See ');
+    shortcutsDesc.appendChild(this.getShortcutsLink());
+    shortcutsDesc.appendText('.');
+
+    new Setting(contentEl)
+      .setDesc(shortcutsDesc);
 
     // Submit Button
     new Setting(contentEl)
@@ -123,6 +130,14 @@ export class AddTaskModal extends Modal {
               this.onSubmit(this.result);
             }
           }));
+  }
+
+  private getShortcutsLink(): HTMLAnchorElement {
+    const a = document.createElement('a');
+    a.href = 'https://help.amazingmarvin.com/en/articles/1949399-using-shortcuts-while-creating-a-task';
+    a.text = 'Using shortcuts while creating a task';
+    a.target = '_blank';
+    return a;
   }
 
   private getFullPathToCategoryTitle(category: Category, categories: Category[]): string {

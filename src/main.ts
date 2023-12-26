@@ -45,7 +45,8 @@ const CONSTANTS = {
 	categoriesEndpoint: '/api/categories',
 	childrenEndpoint: '/api/children',
 	scheduledOnDayEndpoint: '/api/todayItems',
-	dueOnDayEndpoint: '/api/dueItems'
+	dueOnDayEndpoint: '/api/dueItems',
+	addTaskEndpoint: '/api/addTask',
 }
 
 
@@ -90,15 +91,13 @@ export default class AmazingMarvinPlugin extends Plugin {
 						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
 							console.log('Task details:', taskDetails);
 
-							// Now you can add the logic to create a Marvin task here using the API...
-							// For example:
-							// this.createMarvinTask(taskDetails.catId, taskDetails.task)
-							// .then(task => {
-							//     editor.replaceRange(`[Marvin Task](${task.deepLink})`, editor.getCursor());
-							// })
-							// .catch(error => {
-							//     new Notice('Could not create Marvin task: ' + error.message);
-							// });
+							this.addMarvinTask(taskDetails.catId, taskDetails.task)
+								.then(task => {
+									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
+								})
+								.catch(error => {
+									new Notice('Could not create Marvin task: ' + error.message);
+								});
 						}).open();
 					} else {
 						// Handle the case where categories could not be loaded
@@ -151,6 +150,50 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		});
 
+	}
+	async addMarvinTask(catId: string, taskTitle: string): Promise<Task> {
+		const opt = this.settings;
+
+		let requestBody = (catId === '' || catId === undefined || catId === "root" || catId === "__inbox-faux__") ?
+			{
+				title : taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+			}
+			:
+			{
+				title: taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+				parentId: catId,
+			};
+
+		try {
+			const remoteResponse = await requestUrl({
+				url: `https://serv.amazingmarvin.com/api/addTask`,
+				method: 'POST',
+				headers: {
+					'X-API-Token': opt.apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			if (remoteResponse.status === 200) {
+				new Notice("Task added in Amazing Marvin.");
+				return this.decorateWithDeepLink(remoteResponse.json) as Task;
+			}
+		} catch (error) {
+			const errorNote = document.createDocumentFragment();
+			errorNote.appendText('Error creating task in Amazing Marvin. Try again or do it');
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/';
+			a.text = 'manually';
+			a.target = '_blank';
+			errorNote.appendChild(a);
+
+			new Notice(errorNote, 0);
+			console.error('Error creating task:', error);
+		}
+		return Promise.reject(new Error('Error creating task'));
 	}
 
 	onunload() { }
