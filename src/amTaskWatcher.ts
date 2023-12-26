@@ -19,13 +19,12 @@ export function amTaskWatcher(_app: App, plugin: AmazingMarvinPlugin) {
           return;
         }
         update.changes.iterChanges((fromA, _toA, _fromB, _toB, change) => {
-          console.log("change", change)
           //only match if the change is on an AM task and it's a completed task
-            let line = update.state.doc.lineAt(fromA).text;
-            const match = line.match(COMPLETED_AM_TASK);
-            if (match && match[1]) {
-              plugin.markDone(match[1]);
-            }
+          let line = update.state.doc.lineAt(fromA).text;
+          const match = line.match(COMPLETED_AM_TASK);
+          if (match && match[1]) {
+            plugin.markDone(match[1]);
+          }
         });
       }
     },
