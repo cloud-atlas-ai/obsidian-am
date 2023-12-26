@@ -5,7 +5,6 @@ import {
 	requestUrl,
 } from "obsidian";
 
-
 import {
 	Category,
 	Task
@@ -21,6 +20,7 @@ import {
 	getDateFromFile
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
+import { AddTaskModal } from "./addTaskModal";
 
 let noticeTimeout: NodeJS.Timeout;
 
@@ -45,8 +45,10 @@ const CONSTANTS = {
 	categoriesEndpoint: '/api/categories',
 	childrenEndpoint: '/api/children',
 	scheduledOnDayEndpoint: '/api/todayItems',
-	dueOnDayEndpoint: '/api/dueItems'
+	dueOnDayEndpoint: '/api/dueItems',
+	addTaskEndpoint: '/api/addTask',
 }
+
 
 export default class AmazingMarvinPlugin extends Plugin {
 
@@ -75,6 +77,38 @@ export default class AmazingMarvinPlugin extends Plugin {
 		if (this.settings.attemptToMarkTasksAsDone) {
 			this.registerEditorExtension(amTaskWatcher(this.app, this));
 		}
+
+		this.addCommand({
+			id: "create-marvin-task",
+			name: "Create Marvin Task",
+			editorCallback: async (editor, view) => {
+				// Fetch categories first and make sure they are loaded
+				try {
+					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
+					console.log('Categories:', categories); // For debug purposes
+					// Ensure categories are fetched before initializing the modal
+					if (categories.length > 0) {
+						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
+							console.log('Task details:', taskDetails);
+
+							this.addMarvinTask(taskDetails.catId, taskDetails.task)
+								.then(task => {
+									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
+								})
+								.catch(error => {
+									new Notice('Could not create Marvin task: ' + error.message);
+								});
+						}).open();
+					} else {
+						// Handle the case where categories could not be loaded
+						new Notice('Failed to load categories from Amazing Marvin.');
+					}
+				} catch (error) {
+					console.error('Error fetching categories:', error);
+					new Notice('Failed to load categories from Amazing Marvin.');
+				}
+			}
+		});
 
 		this.addCommand({
 			id: 'am-import',
@@ -116,6 +150,50 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		});
 
+	}
+	async addMarvinTask(catId: string, taskTitle: string): Promise<Task> {
+		const opt = this.settings;
+
+		let requestBody = (catId === '' || catId === undefined || catId === "root" || catId === "__inbox-faux__") ?
+			{
+				title : taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+			}
+			:
+			{
+				title: taskTitle,
+				timeZoneOffset: new Date().getTimezoneOffset(),
+				parentId: catId,
+			};
+
+		try {
+			const remoteResponse = await requestUrl({
+				url: `https://serv.amazingmarvin.com/api/addTask`,
+				method: 'POST',
+				headers: {
+					'X-API-Token': opt.apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			if (remoteResponse.status === 200) {
+				new Notice("Task added in Amazing Marvin.");
+				return this.decorateWithDeepLink(remoteResponse.json) as Task;
+			}
+		} catch (error) {
+			const errorNote = document.createDocumentFragment();
+			errorNote.appendText('Error creating task in Amazing Marvin. Try again or do it');
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/';
+			a.text = 'manually';
+			a.target = '_blank';
+			errorNote.appendChild(a);
+
+			new Notice(errorNote, 0);
+			console.error('Error creating task:', error);
+		}
+		return Promise.reject(new Error('Error creating task'));
 	}
 
 	onunload() { }
