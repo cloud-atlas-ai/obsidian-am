@@ -274,7 +274,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 			errorMessage = `[${response.status}] ${await response.text}`;
 		} catch (err) {
 			errorMessage = err.message;
-			console.error('Error fetching data from local server:', err);
+			console.debug('Failed while fetching from local server, will try the public server next:', err);
 		}
 
 		if (!opt.useLocalServer || errorMessage) {
