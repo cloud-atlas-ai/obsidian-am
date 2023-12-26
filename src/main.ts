@@ -175,8 +175,10 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 
 		if (notePath && notePath !== '') {
-			requestBody.note = `[🏷️](obsidian://advanced-uri?filePath=${notePath}${vaultName !== '' ? `&vault=${vaultName}` : ''})`;
-		}
+			let encodedVaultName = vaultName !== '' ? encodeURIComponent(vaultName) : '';
+			let encodedNotePath = encodeURIComponent(encodeURIComponent(notePath));
+			requestBody.note = `[🏷️](obsidian://advanced-uri?filepath=${encodedNotePath}${encodedVaultName !== '' ? `&vault=${encodedVaultName}` : ''})`;
+	}
 
 		try {
 			const remoteResponse = await requestUrl({
