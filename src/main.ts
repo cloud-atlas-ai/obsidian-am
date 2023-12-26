@@ -195,12 +195,13 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
-			errorNote.appendText('Error creating task in Amazing Marvin. Try again or do it');
+			errorNote.appendText('Error creating task in Amazing Marvin. Try again or do it ');
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/';
 			a.text = 'manually';
 			a.target = '_blank';
 			errorNote.appendChild(a);
+			errorNote.appendText('.');
 
 			new Notice(errorNote, 0);
 			console.error('Error creating task:', error);
