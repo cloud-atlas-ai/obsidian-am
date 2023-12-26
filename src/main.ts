@@ -85,12 +85,10 @@ export default class AmazingMarvinPlugin extends Plugin {
 				// Fetch categories first and make sure they are loaded
 				try {
 					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
-					console.log('Categories:', categories); // For debug purposes
 					// Ensure categories are fetched before initializing the modal
 					if (categories.length > 0) {
 						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
-							console.log('Task details:', taskDetails);
-
+							console.debug(`TaskModal result: ${taskDetails.catId} - ${taskDetails.task}}`);
 							this.addMarvinTask(taskDetails.catId, taskDetails.task)
 								.then(task => {
 									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
