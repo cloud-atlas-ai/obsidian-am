@@ -21,8 +21,11 @@ import {
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
 import { AddTaskModal } from "./addTaskModal";
+import { time } from "console";
 
-let noticeTimeout: NodeJS.Timeout;
+function getAMTimezoneOffset() {
+	return new Date().getTimezoneOffset() * -1;
+}
 
 const animateNotice = (notice: Notice) => {
 	let message = notice.noticeEl.innerText;
@@ -37,7 +40,7 @@ const animateNotice = (notice: Notice) => {
 		message = message.replace(" ...", "    ");
 	}
 	notice.setMessage(message);
-	noticeTimeout = setTimeout(() => animateNotice(notice), 500);
+	setTimeout(() => animateNotice(notice), 500);
 };
 
 const CONSTANTS = {
@@ -164,7 +167,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		let requestBody: any = {
 			title: taskTitle,
-			timeZoneOffset: new Date().getTimezoneOffset(),
+			timeZoneOffset: getAMTimezoneOffset(),
 		};
 
 		if (catId && catId !== '' && catId !== 'root' && catId !== '__inbox-faux__') {
@@ -222,7 +225,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		const opt = this.settings;
 		const requestBody = {
 			itemId: taskId,
-			timeZoneOffset: new Date().getTimezoneOffset()
+			timeZoneOffset: getAMTimezoneOffset()
 		};
 
 		try {
