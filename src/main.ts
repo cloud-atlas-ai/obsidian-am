@@ -192,17 +192,22 @@ export default class AmazingMarvinPlugin extends Plugin {
 			if (remoteResponse.status === 200) {
 				new Notice("Task added in Amazing Marvin.");
 				return this.decorateWithDeepLink(remoteResponse.json) as Task;
+			} else if (remoteResponse.status === 429) {
+
+				const errorNote = document.createDocumentFragment();
+				errorNote.appendText('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it ');
+				const a = document.createElement('a');
+				a.href = 'https://app.amazingmarvin.com/';
+				a.text = 'manually';
+				a.target = '_blank';
+				errorNote.appendChild(a);
+				errorNote.appendText('.');
+				new Notice(errorNote,);
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
-
-			if (error.remoteResponse.status === 429) {
-				errorNote.appendText('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it ');
-				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
-			} else {
-				errorNote.appendText('Error creating task in Amazing Marvin. You can try again or do it ');
-				console.error('Error creating task:', error);
-			}
+			errorNote.appendText('Error creating task in Amazing Marvin. You can try again or do it ');
+			console.error('Error creating task:', error);
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/';
 			a.text = 'manually';
@@ -249,16 +254,23 @@ export default class AmazingMarvinPlugin extends Plugin {
 			if (remoteResponse.status === 200) {
 				new Notice("Task marked as done in Amazing Marvin.");
 				return remoteResponse.json;
+			} else if (remoteResponse.status === 429) {
+				const errorNote = document.createDocumentFragment();
+				errorNote.appendText('Your request was throttled by Amazing Marvin. Or do it manually at ');
+				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
+				const a = document.createElement('a');
+				a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
+				a.text = 'manually';
+				a.target = '_blank';
+				errorNote.appendChild(a);
+
+				new Notice(errorNote, 0);
+
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
-			if (error.remoteResponse.status === 429) {
-				errorNote.appendText('Your request was throttled by Amazing Marvin. Or do it manually at ');
-				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
-			} else {
-				errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
-				console.error('Error marking task as done:', error);
-			}
+			errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
+			console.error('Error marking task as done:', error);
 
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
