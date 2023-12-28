@@ -175,9 +175,12 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 
 		if (notePath && notePath !== '') {
-			let encodedVaultName = vaultName !== '' ? encodeURIComponent(vaultName) : '';
-			let encodedNotePath = encodeURIComponent(encodeURIComponent(notePath));
-			requestBody.note = `[🏷️](obsidian://advanced-uri?filepath=${encodedNotePath}${encodedVaultName !== '' ? `&vault=${encodedVaultName}` : ''})`;
+			let link = `obsidian://open?file=${encodeURI(notePath)}${vaultName !== '' ? `&vault=${encodeURI(vaultName)}` : ''}`;
+			if (this.settings.linkBackToObsidianText !== '') {
+				requestBody.note = `[${this.settings.linkBackToObsidianText}](${link})`;
+			} else {
+				requestBody.note = link;
+			}
 	}
 
 		try {
@@ -253,21 +256,25 @@ export default class AmazingMarvinPlugin extends Plugin {
 				body: JSON.stringify(requestBody)
 			});
 
+			const note = document.createDocumentFragment();
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
+
+			a.target = '_blank';
+
 			if (remoteResponse.status === 200) {
-				new Notice("Task marked as done in Amazing Marvin.");
+				a.text = 'Task';
+				note.append(a);
+				note.appendText(' marked as done in Amazing Marvin.');
+				new Notice(note, 5000);
 				return remoteResponse.json;
 			} else if (remoteResponse.status === 429) {
-				const errorNote = document.createDocumentFragment();
-				errorNote.appendText('Your request was throttled by Amazing Marvin. Or do it manually at ');
-				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
-				const a = document.createElement('a');
-				a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
 				a.text = 'manually';
-				a.target = '_blank';
-				errorNote.appendChild(a);
+				note.appendText('Your request was throttled by Amazing Marvin. Do it manually at ');
+				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
+				note.appendChild(a);
 
-				new Notice(errorNote, 0);
-
+				new Notice(note, 0);
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
