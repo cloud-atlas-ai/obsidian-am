@@ -105,9 +105,6 @@ export class AddTaskModal extends Modal {
 
     new Setting(contentEl)
       .addTextArea((textArea: TextAreaComponent) => {
-        textArea.inputEl.style.minHeight = "5em";
-        textArea.inputEl.style.minWidth = "100%";
-
         textArea.onChange((value: string) => {
           this.result.task = value;
         });
