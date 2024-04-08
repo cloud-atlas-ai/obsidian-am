@@ -82,8 +82,8 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 
 		this.addCommand({
-			id: "create-marvin-task",
-			name: "Create Marvin Task",
+			id: "create-task",
+			name: "Create task",
 			editorCallback: async (editor, view) => {
 				// Fetch categories first and make sure they are loaded
 				try {
@@ -122,8 +122,8 @@ export default class AmazingMarvinPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'am-import',
-			name: 'Import Categories and Tasks',
+			id: 'import',
+			name: 'Import categories and tasks',
 			callback: () => {
 				animateNotice(new Notice('Importing from Amazing Marvin...'));
 				this.sync().then(() => {
@@ -135,8 +135,8 @@ export default class AmazingMarvinPlugin extends Plugin {
 			}
 		});
 		this.addCommand({
-			id: "am-import-today",
-			name: "Import Today's Tasks",
+			id: "import-today",
+			name: "Import today's tasks",
 			editorCallback: async (editor, view) => {
 				try {
 					const today = new Date().toISOString().split('T')[0];
