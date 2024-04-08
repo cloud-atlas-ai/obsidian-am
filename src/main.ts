@@ -3,6 +3,7 @@ import {
 	Plugin,
 	normalizePath,
 	requestUrl,
+  stringifyYaml,
 } from "obsidian";
 
 
@@ -407,29 +408,12 @@ export default class AmazingMarvinPlugin extends Plugin {
 		return details;
 	}
 
-	toYamlValue(value: any): string {
-		if (typeof value === 'string') {
-			return `"${value.replace(/"/g, '\\"')}"`;
-		} else if (Array.isArray(value)) {
-			// YAML array format
-			return `[${value.map(this.toYamlValue).join(', ')}]`;
-		} else if (typeof value === 'object' && value !== null) {
-			// YAML map format
-			const yamlMap = Object.entries(value).map(([k, v]) => `  ${k}: ${this.toYamlValue(v)}`);
-			return `\n${yamlMap.join('\n')}`;
-		} else {
-			return String(value);
-		}
-	}
-
 	async createContentForCategory(category: Category): Promise<string> {
 		let yamlFrontmatter = "---\n";
-
-
 		// Iterate over category properties and add non-null values to YAML frontmatter
 		for (const [key, value] of Object.entries(category)) {
 			if (value !== null && value !== undefined) {
-				yamlFrontmatter += `${key}: ${this.toYamlValue(value)}\n`;
+				yamlFrontmatter += `${key}: ${stringifyYaml(value)}\n`;
 			}
 		}
 
