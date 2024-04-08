@@ -340,7 +340,12 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 	async sync() {
 		try {
-			this.app.vault.adapter.rmdir(CONSTANTS.baseDir, true);
+			const baseDirPath = normalizePath(CONSTANTS.baseDir);
+        const baseDir = this.app.vault.getAbstractFileByPath(baseDirPath);
+        if (baseDir) {
+            await this.app.vault.delete(baseDir, true);
+        }
+
 			this.categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
 
 			this.processCategories();
