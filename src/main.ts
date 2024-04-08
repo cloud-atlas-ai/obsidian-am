@@ -6,7 +6,6 @@ import {
   stringifyYaml,
 } from "obsidian";
 
-
 import {
 	Category,
 	Task
@@ -22,8 +21,12 @@ import {
 	getDateFromFile
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
+import { AddTaskModal } from "./addTaskModal";
+import { time } from "console";
 
-let noticeTimeout: NodeJS.Timeout;
+function getAMTimezoneOffset() {
+	return new Date().getTimezoneOffset() * -1;
+}
 
 const animateNotice = (notice: Notice) => {
 	let message = notice.noticeEl.innerText;
@@ -38,7 +41,7 @@ const animateNotice = (notice: Notice) => {
 		message = message.replace(" ...", "    ");
 	}
 	notice.setMessage(message);
-	noticeTimeout = setTimeout(() => animateNotice(notice), 500);
+	setTimeout(() => animateNotice(notice), 500);
 };
 
 const CONSTANTS = {
@@ -46,8 +49,10 @@ const CONSTANTS = {
 	categoriesEndpoint: '/api/categories',
 	childrenEndpoint: '/api/children',
 	scheduledOnDayEndpoint: '/api/todayItems',
-	dueOnDayEndpoint: '/api/dueItems'
+	dueOnDayEndpoint: '/api/dueItems',
+	addTaskEndpoint: '/api/addTask',
 }
+
 
 export default class AmazingMarvinPlugin extends Plugin {
 
@@ -76,6 +81,46 @@ export default class AmazingMarvinPlugin extends Plugin {
 		if (this.settings.attemptToMarkTasksAsDone) {
 			this.registerEditorExtension(amTaskWatcher(this.app, this));
 		}
+
+		this.addCommand({
+			id: "create-marvin-task",
+			name: "Create Marvin Task",
+			editorCallback: async (editor, view) => {
+				// Fetch categories first and make sure they are loaded
+				try {
+
+					//if a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
+					if (editor.somethingSelected() && editor.getSelection().length > 2) {
+						this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName()).then(task => {
+							editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
+						}).catch(error => {
+							new Notice('Could not create Marvin task: ' + error.message);
+						});
+						return;
+					}
+
+					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
+					// Ensure categories are fetched before initializing the modal
+					if (categories.length > 0) {
+						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
+							this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName())
+								.then(task => {
+									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
+								})
+								.catch(error => {
+									new Notice('Could not create Marvin task: ' + error.message);
+								});
+						}).open();
+					} else {
+						// Handle the case where categories could not be loaded
+						new Notice('Failed to load categories from Amazing Marvin.');
+					}
+				} catch (error) {
+					console.error('Error fetching categories:', error);
+					new Notice('Failed to load categories from Amazing Marvin.');
+				}
+			}
+		});
 
 		this.addCommand({
 			id: 'am-import',
@@ -118,6 +163,68 @@ export default class AmazingMarvinPlugin extends Plugin {
 		});
 
 	}
+	async addMarvinTask(catId: string, taskTitle: string, notePath: string = '', vaultName: string = ''): Promise<Task> {
+		const opt = this.settings;
+
+		let requestBody: any = {
+			title: taskTitle,
+			timeZoneOffset: getAMTimezoneOffset(),
+		};
+
+		if (catId && catId !== '' && catId !== 'root' && catId !== '__inbox-faux__') {
+			requestBody.parentId = catId;
+		}
+
+		if (notePath && notePath !== '') {
+			let link = `obsidian://open?file=${encodeURI(notePath)}${vaultName !== '' ? `&vault=${encodeURI(vaultName)}` : ''}`;
+			if (this.settings.linkBackToObsidianText !== '') {
+				requestBody.note = `[${this.settings.linkBackToObsidianText}](${link})`;
+			} else {
+				requestBody.note = link;
+			}
+	}
+
+		try {
+			const remoteResponse = await requestUrl({
+				url: `https://serv.amazingmarvin.com/api/addTask`,
+				method: 'POST',
+				headers: {
+					'X-API-Token': opt.apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			if (remoteResponse.status === 200) {
+				new Notice("Task added in Amazing Marvin.");
+				return this.decorateWithDeepLink(remoteResponse.json) as Task;
+			} else if (remoteResponse.status === 429) {
+
+				const errorNote = document.createDocumentFragment();
+				errorNote.appendText('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it ');
+				const a = document.createElement('a');
+				a.href = 'https://app.amazingmarvin.com/';
+				a.text = 'manually';
+				a.target = '_blank';
+				errorNote.appendChild(a);
+				errorNote.appendText('.');
+				new Notice(errorNote,);
+			}
+		} catch (error) {
+			const errorNote = document.createDocumentFragment();
+			errorNote.appendText('Error creating task in Amazing Marvin. You can try again or do it ');
+			console.error('Error creating task:', error);
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/';
+			a.text = 'manually';
+			a.target = '_blank';
+			errorNote.appendChild(a);
+			errorNote.appendText('.');
+
+			new Notice(errorNote, 0);
+		}
+		return Promise.reject(new Error('Error creating task'));
+	}
 
 	onunload() { }
 
@@ -136,7 +243,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 		const opt = this.settings;
 		const requestBody = {
 			itemId: taskId,
-			timeZoneOffset: new Date().getTimezoneOffset()
+			timeZoneOffset: getAMTimezoneOffset()
 		};
 
 		try {
@@ -150,13 +257,31 @@ export default class AmazingMarvinPlugin extends Plugin {
 				body: JSON.stringify(requestBody)
 			});
 
+			const note = document.createDocumentFragment();
+			const a = document.createElement('a');
+			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
+
+			a.target = '_blank';
+
 			if (remoteResponse.status === 200) {
-				new Notice("Task marked as done in Amazing Marvin.");
+				a.text = 'Task';
+				note.append(a);
+				note.appendText(' marked as done in Amazing Marvin.');
+				new Notice(note, 5000);
 				return remoteResponse.json;
+			} else if (remoteResponse.status === 429) {
+				a.text = 'manually';
+				note.appendText('Your request was throttled by Amazing Marvin. Do it manually at ');
+				console.error('Your request was throttled by Amazing Marvin. Wait a few minutes and try again. Or do it manually.');
+				note.appendChild(a);
+
+				new Notice(note, 0);
 			}
 		} catch (error) {
 			const errorNote = document.createDocumentFragment();
 			errorNote.appendText('Error marking task as done in Amazing Marvin. You should do it ');
+			console.error('Error marking task as done:', error);
+
 			const a = document.createElement('a');
 			a.href = 'https://app.amazingmarvin.com/#t=' + taskId;
 			a.text = 'manually';
@@ -164,7 +289,6 @@ export default class AmazingMarvinPlugin extends Plugin {
 			errorNote.appendChild(a);
 
 			new Notice(errorNote, 0);
-			console.error('Error marking task as done:', error);
 		}
 	}
 
@@ -188,7 +312,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 			errorMessage = `[${response.status}] ${await response.text}`;
 		} catch (err) {
 			errorMessage = err.message;
-			console.error('Error fetching data from local server:', err);
+			console.debug('Failed while fetching from local server, will try the public server next:', err);
 		}
 
 		if (!opt.useLocalServer || errorMessage) {
@@ -203,7 +327,11 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 				errorMessage = `[${response.status}] ${await response.text()}`;
 			} catch (err) {
-				errorMessage = err.message;
+				if (response?.status === 429) {
+					errorMessage = 'Your request was throttled by Amazing Marvin.';
+				} else {
+					errorMessage = err.message;
+				}
 			}
 		}
 

@@ -2,6 +2,7 @@ import { App, Platform, PluginSettingTab, Setting } from "obsidian";
 import AmazingMarvinPlugin from "./main";
 
 export interface AmazingMarvinPluginSettings {
+	linkBackToObsidianText: string;
 	attemptToMarkTasksAsDone: any;
 	useLocalServer: boolean;
 	localServerHost: string;
@@ -14,6 +15,7 @@ export interface AmazingMarvinPluginSettings {
 }
 
 export const DEFAULT_SETTINGS: AmazingMarvinPluginSettings = {
+	linkBackToObsidianText: '',
 	useLocalServer: false,
 	localServerHost: "localhost",
 	localServerPort: 12082,
@@ -33,22 +35,16 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	private getAPILink(): HTMLAnchorElement {
-		const a = document.createElement('a');
-		a.href = 'https://app.amazingmarvin.com/pre?api';
-		a.text = 'API page';
-		a.target = '_blank';
-		return a;
-	}
+	// refactor a function for link creation that takes the href and text as parameters
 
-	private getLocalAPIDocs(): HTMLAnchorElement {
-		const a = document.createElement('a');
-		a.href = 'https://help.amazingmarvin.com/en/articles/5165191-desktop-local-api-server';
-		a.text = 'Desktop Local API Server';
-		a.target = '_blank';
-		return a;
-	}
+private a(href: string, text: string) {
+	const a = document.createElement('a');
+	a.href = href;
+	a.text = text;
+	a.target = '_blank';
+	return a;
 
+}
 	display(): void {
 		const { containerEl } = this;
 
@@ -56,7 +52,7 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 
 		const TokenDescEl = document.createDocumentFragment();
 		TokenDescEl.appendText('Get your Token at the ');
-		TokenDescEl.appendChild(this.getAPILink());
+		TokenDescEl.appendChild(this.a('https://app.amazingmarvin.com/pre?api', 'API page'));
 
 		new Setting(containerEl)
 			.setName("API Token")
@@ -73,7 +69,7 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Mark tasks as done")
-			.setDesc("Attempt to mark tasks as done in Amazing Marvin")
+			.setDesc("Attempt to mark tasks as done in Amazing Marvin. Note that this only applies to Amazing Marvins tasks imported or created with this plugin.")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.attemptToMarkTasksAsDone)
 				.onChange(async (value) => {
@@ -98,6 +94,29 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
+
+		new Setting(containerEl)
+			.setHeading().setName("Task creation");
+
+
+		const noteLink = document.createDocumentFragment();
+		// make this text much shorter
+		noteLink.appendText('Text for note back to Obsidian on tasks created with this plugin. If empty, a link be added.');
+		noteLink.append(document.createElement('br'));
+
+		new Setting(containerEl)
+			.setName("Note link text")
+			.setDesc(noteLink)
+			.addText((text) =>
+				text
+					.setPlaceholder("Note link text")
+					.setValue(this.plugin.settings.linkBackToObsidianText)
+					.onChange(async (value) => {
+						this.plugin.settings.linkBackToObsidianText = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
+
 
 		new Setting(containerEl)
 			.setHeading().setName("Task formatting");
@@ -135,7 +154,7 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 		if (Platform.isDesktopApp) {
 			const lsDescEl = document.createDocumentFragment();
 			lsDescEl.appendText('The local API can speed up the plugin. See the ');
-			lsDescEl.appendChild(this.getLocalAPIDocs());
+			lsDescEl.appendChild(this.a('https://help.amazingmarvin.com/en/articles/5165191-desktop-local-api-server', 'Desktop Local API Server'));
 			lsDescEl.appendText(' for more information.');
 
 			let ls = new Setting(containerEl)
@@ -153,6 +172,10 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 					.setPlaceholder("localhost")
 					.setValue(this.plugin.settings.localServerHost || "localhost")
 					.setDisabled(!this.plugin.settings.useLocalServer)
+					.onChange(async (value) => {
+						this.plugin.settings.localServerHost = value;
+						await this.plugin.saveSettings();
+					})
 				);
 
 			// Local Server Port
@@ -162,16 +185,19 @@ export class AmazingMarvinSettingsTab extends PluginSettingTab {
 					.setPlaceholder("12082")
 					.setValue(this.plugin.settings.localServerPort?.toString() || "12082")
 					.setDisabled(!this.plugin.settings.useLocalServer)
+					.onChange(async (value) => {
+						this.plugin.settings.localServerPort = value;
+						await this.plugin.saveSettings();
+					})
 				);
 
 			// Update the disabled state based on the toggle
 			localServerToggle.addToggle(toggle => toggle.onChange(async (value) => {
 				this.plugin.settings.useLocalServer = value;
-				await this.plugin.saveSettings();
-
 				localServerHostSetting.setDisabled(!value);
 				localServerPortSetting.setDisabled(!value);
-			}));
+				await this.plugin.saveSettings();
+			}).setValue(this.plugin.settings.useLocalServer));
 
 		}
 	}
