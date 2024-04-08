@@ -22,7 +22,6 @@ import {
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
 import { AddTaskModal } from "./addTaskModal";
-import { time } from "console";
 
 function getAMTimezoneOffset() {
 	return new Date().getTimezoneOffset() * -1;
