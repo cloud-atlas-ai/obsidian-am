@@ -144,17 +144,17 @@ export default class AmazingMarvinPlugin extends Plugin {
 					const fileDate = view.file ? getDateFromFile(view.file, "day")?.format("YYYY-MM-DD") : today;
 
 					const date = fileDate ? fileDate : today;
-					let tasks = [];
+					let tasks = new Set<Task | Category>();
 					if (this.settings.todayTasksToShow === 'due' || this.settings.todayTasksToShow === 'both') {
 						const dueTasks = await this.getDueTasks(date);
-						tasks.push(...dueTasks);
+						dueTasks.forEach(task => tasks.add(task));;
 					}
 					if (this.settings.todayTasksToShow === 'scheduled' || this.settings.todayTasksToShow === 'both') {
 						const scheduledTasks = await this.getScheduledTasks(date);
-						tasks.push(...scheduledTasks);
+						scheduledTasks.forEach(task => tasks.add(task));;
 					}
 
-					editor.replaceRange(this.formatItems(tasks, 1, false), editor.getCursor());
+					editor.replaceRange(this.formatItems(Array.from(tasks), 0, false), editor.getCursor());
 				} catch (error) {
 					new Notice(`Error importing scheduled tasks: ${error}`);
 					console.error(`Error importing scheduled tasks: ${error}`);
@@ -323,7 +323,7 @@ export default class AmazingMarvinPlugin extends Plugin {
 				});
 
 				if (response.status === 200) {
-					return response.json();
+					return response.json;
 				}
 
 				errorMessage = `[${response.status}] ${await response.text}`;
