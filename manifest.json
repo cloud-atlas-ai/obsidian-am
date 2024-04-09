@@ -1,7 +1,7 @@
 {
   "id": "cloudatlas-o-am",
-  "name": "Amazing Marvin by Cloud Atlas",
-  "version": "0.9.2",
+  "name": "Amazing Marvin Integration",
+  "version": "0.9.9",
   "minAppVersion": "1.4.16",
   "description": "Integration with Amazing Marvin",
   "author": "Cloud Atlas",

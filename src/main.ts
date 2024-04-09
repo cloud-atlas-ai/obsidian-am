@@ -22,7 +22,6 @@ import {
 } from "obsidian-daily-notes-interface";
 import { amTaskWatcher } from "./amTaskWatcher";
 import { AddTaskModal } from "./addTaskModal";
-import { time } from "console";
 
 function getAMTimezoneOffset() {
 	return new Date().getTimezoneOffset() * -1;
@@ -83,78 +82,79 @@ export default class AmazingMarvinPlugin extends Plugin {
 		}
 
 		this.addCommand({
-			id: "create-marvin-task",
-			name: "Create Marvin Task",
+			id: "create-task",
+			name: "Create task",
 			editorCallback: async (editor, view) => {
-				// Fetch categories first and make sure they are loaded
-				try {
+        // Fetch categories first and make sure they are loaded
+        try {
+          // If a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
+          if (editor.somethingSelected() && editor.getSelection().length > 2) {
+            try {
+              const task = await this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName());
+              editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
+            } catch (error) {
+              new Notice('Could not create Marvin task: ' + error.message);
+            }
+            return;
+          }
 
-					//if a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
-					if (editor.somethingSelected() && editor.getSelection().length > 2) {
-						this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName()).then(task => {
-							editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
-						}).catch(error => {
-							new Notice('Could not create Marvin task: ' + error.message);
-						});
-						return;
-					}
+          const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
+          // Ensure categories are fetched before initializing the modal
+          if (categories.length > 0) {
+            new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
+              try {
+                const task = await this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName());
+                editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
+              } catch (error) {
+                new Notice('Could not create Marvin task: ' + error.message);
+              }
+            }).open();
+          } else {
+            // Handle the case where categories could not be loaded
+            new Notice('Failed to load categories from Amazing Marvin.');
+          }
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          new Notice('Failed to load categories from Amazing Marvin.');
+        }
+      }});
 
-					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
-					// Ensure categories are fetched before initializing the modal
-					if (categories.length > 0) {
-						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
-							this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName())
-								.then(task => {
-									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
-								})
-								.catch(error => {
-									new Notice('Could not create Marvin task: ' + error.message);
-								});
-						}).open();
-					} else {
-						// Handle the case where categories could not be loaded
-						new Notice('Failed to load categories from Amazing Marvin.');
-					}
-				} catch (error) {
-					console.error('Error fetching categories:', error);
-					new Notice('Failed to load categories from Amazing Marvin.');
-				}
-			}
-		});
-
+      this.addCommand({
+        id: 'import',
+        name: 'Import categories and tasks',
+        callback: async () => {
+          const notice = new Notice('Importing from Amazing Marvin...');
+          animateNotice(notice);
+          try {
+            await this.sync();
+            notice.hide(); // Hide the animating notice before showing success message
+            new Notice('Amazing Marvin data imported successfully.');
+          } catch (error) {
+            console.error('Sync error:', error);
+            new Notice('Error syncing with Amazing Marvin.');
+          }
+        }
+      });
 		this.addCommand({
-			id: 'am-import',
-			name: 'Import Categories and Tasks',
-			callback: () => {
-				animateNotice(new Notice('Importing from Amazing Marvin...'));
-				this.sync().then(() => {
-					new Notice('Amazing Marvin data imported successfully.');
-				}).catch((error) => {
-					console.error('Sync error:', error);
-					new Notice('Error syncing with Amazing Marvin.');
-				});
-			}
-		});
-		this.addCommand({
-			id: "am-import-today",
-			name: "Import Today's Tasks",
+			id: "import-today",
+			name: "Import today's tasks",
 			editorCallback: async (editor, view) => {
 				try {
 					const today = new Date().toISOString().split('T')[0];
 					const fileDate = view.file ? getDateFromFile(view.file, "day")?.format("YYYY-MM-DD") : today;
 
 					const date = fileDate ? fileDate : today;
-					let tasks = [];
+					let tasks = new Set<Task | Category>();
 					if (this.settings.todayTasksToShow === 'due' || this.settings.todayTasksToShow === 'both') {
 						const dueTasks = await this.getDueTasks(date);
-						tasks.push(...dueTasks);
+						dueTasks.forEach(task => tasks.add(task));;
 					}
 					if (this.settings.todayTasksToShow === 'scheduled' || this.settings.todayTasksToShow === 'both') {
 						const scheduledTasks = await this.getScheduledTasks(date);
-						tasks.push(...scheduledTasks);
+						scheduledTasks.forEach(task => tasks.add(task));;
 					}
 
-					editor.replaceRange(this.formatItems(tasks, 1, false), editor.getCursor());
+					editor.replaceRange(this.formatItems(Array.from(tasks), 0, false), editor.getCursor());
 				} catch (error) {
 					new Notice(`Error importing scheduled tasks: ${error}`);
 					console.error(`Error importing scheduled tasks: ${error}`);
@@ -317,15 +317,16 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		if (!opt.useLocalServer || errorMessage) {
 			try {
-				response = await fetch(`https://serv.amazingmarvin.com${endpoint}`, {
+				response = await requestUrl({
+          url: `https://serv.amazingmarvin.com${endpoint}`,
 					headers: { 'X-API-Token': opt.apiKey }
 				});
 
-				if (response.ok) {
-					return response.json();
+				if (response.status === 200) {
+					return response.json;
 				}
 
-				errorMessage = `[${response.status}] ${await response.text()}`;
+				errorMessage = `[${response.status}] ${await response.text}`;
 			} catch (err) {
 				if (response?.status === 429) {
 					errorMessage = 'Your request was throttled by Amazing Marvin.';
@@ -341,7 +342,12 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 	async sync() {
 		try {
-			this.app.vault.adapter.rmdir(CONSTANTS.baseDir, true);
+			const baseDirPath = normalizePath(CONSTANTS.baseDir);
+        const baseDir = this.app.vault.getAbstractFileByPath(baseDirPath);
+        if (baseDir) {
+            await this.app.vault.delete(baseDir, true);
+        }
+
 			this.categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
 
 			this.processCategories();
