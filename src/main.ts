@@ -85,55 +85,56 @@ export default class AmazingMarvinPlugin extends Plugin {
 			id: "create-task",
 			name: "Create task",
 			editorCallback: async (editor, view) => {
-				// Fetch categories first and make sure they are loaded
-				try {
+        // Fetch categories first and make sure they are loaded
+        try {
+          // If a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
+          if (editor.somethingSelected() && editor.getSelection().length > 2) {
+            try {
+              const task = await this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName());
+              editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
+            } catch (error) {
+              new Notice('Could not create Marvin task: ' + error.message);
+            }
+            return;
+          }
 
-					//if a region of text is selected, at least 3 characters long, use that to add a new task and skip the modal
-					if (editor.somethingSelected() && editor.getSelection().length > 2) {
-						this.addMarvinTask('', editor.getSelection(), view.file?.path, this.app.vault.getName()).then(task => {
-							editor.replaceSelection(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`);
-						}).catch(error => {
-							new Notice('Could not create Marvin task: ' + error.message);
-						});
-						return;
-					}
+          const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
+          // Ensure categories are fetched before initializing the modal
+          if (categories.length > 0) {
+            new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
+              try {
+                const task = await this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName());
+                editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
+              } catch (error) {
+                new Notice('Could not create Marvin task: ' + error.message);
+              }
+            }).open();
+          } else {
+            // Handle the case where categories could not be loaded
+            new Notice('Failed to load categories from Amazing Marvin.');
+          }
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          new Notice('Failed to load categories from Amazing Marvin.');
+        }
+      }});
 
-					const categories = await this.fetchTasksAndCategories(CONSTANTS.categoriesEndpoint);
-					// Ensure categories are fetched before initializing the modal
-					if (categories.length > 0) {
-						new AddTaskModal(this.app, categories, async (taskDetails: { catId: string, task: string }) => {
-							this.addMarvinTask(taskDetails.catId, taskDetails.task, view.file?.path, this.app.vault.getName())
-								.then(task => {
-									editor.replaceRange(`- [${task.done ? 'x' : ' '}] [⚓](${task.deepLink}) ${this.formatTaskDetails(task as Task, '')} ${task.title}`, editor.getCursor());
-								})
-								.catch(error => {
-									new Notice('Could not create Marvin task: ' + error.message);
-								});
-						}).open();
-					} else {
-						// Handle the case where categories could not be loaded
-						new Notice('Failed to load categories from Amazing Marvin.');
-					}
-				} catch (error) {
-					console.error('Error fetching categories:', error);
-					new Notice('Failed to load categories from Amazing Marvin.');
-				}
-			}
-		});
-
-		this.addCommand({
-			id: 'import',
-			name: 'Import categories and tasks',
-			callback: () => {
-				animateNotice(new Notice('Importing from Amazing Marvin...'));
-				this.sync().then(() => {
-					new Notice('Amazing Marvin data imported successfully.');
-				}).catch((error) => {
-					console.error('Sync error:', error);
-					new Notice('Error syncing with Amazing Marvin.');
-				});
-			}
-		});
+      this.addCommand({
+        id: 'import',
+        name: 'Import categories and tasks',
+        callback: async () => {
+          const notice = new Notice('Importing from Amazing Marvin...');
+          animateNotice(notice);
+          try {
+            await this.sync();
+            notice.hide(); // Hide the animating notice before showing success message
+            new Notice('Amazing Marvin data imported successfully.');
+          } catch (error) {
+            console.error('Sync error:', error);
+            new Notice('Error syncing with Amazing Marvin.');
+          }
+        }
+      });
 		this.addCommand({
 			id: "import-today",
 			name: "Import today's tasks",
