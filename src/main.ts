@@ -316,15 +316,16 @@ export default class AmazingMarvinPlugin extends Plugin {
 
 		if (!opt.useLocalServer || errorMessage) {
 			try {
-				response = await fetch(`https://serv.amazingmarvin.com${endpoint}`, {
+				response = await requestUrl({
+          url: `https://serv.amazingmarvin.com${endpoint}`,
 					headers: { 'X-API-Token': opt.apiKey }
 				});
 
-				if (response.ok) {
+				if (response.status === 200) {
 					return response.json();
 				}
 
-				errorMessage = `[${response.status}] ${await response.text()}`;
+				errorMessage = `[${response.status}] ${await response.text}`;
 			} catch (err) {
 				if (response?.status === 429) {
 					errorMessage = 'Your request was throttled by Amazing Marvin.';
